@@ -8,47 +8,47 @@
 //! let file = onflight::parse(&data, &onflight::ParseOptions::default())?;
 //! let cols = onflight::Columns::from_file(file);
 //! for i in 0..cols.len {
-//!     println!("t={:.1}s spd={:.1}kts", cols.sys_time_s(i), cols.ins_gnd_spd_kts(i));
+//!     let speed_kts = cols.ins_gnd_spd[i] as f32 / 100.0;
+//!     println!("t={}ms  {:.1} kts", cols.sys_time_ms[i], speed_kts);
 //! }
 //! ```
 
 use crate::{OnFlightFile, FileHeader, Frame};
 
 /// Columnar flight data storing raw encoded values.
-/// Field names match the Bolder Flight Systems dev manual.
-/// Use accessor methods to get engineering units.
+/// Field names and types match the `Frame` struct.
+/// Scale factors are documented on the corresponding `Frame` fields.
 #[derive(Debug, Clone)]
 pub struct Columns {
     pub header: FileHeader,
     pub len: usize,
 
-    /// Per-frame status bitfield (6 bytes per frame)
     pub status: Vec<[u8; 6]>,
 
     // System
     pub sys_time_ms: Vec<u32>,
-    pub input_volt: Vec<u8>,          // /25 → V
-    pub filt_input_volt: Vec<u8>,     // /25 → V
+    pub input_volt: Vec<u8>,
+    pub filt_input_volt: Vec<u8>,
     pub cpu_die_temp_c: Vec<i8>,
     pub imu_die_temp_c: Vec<i8>,
     pub mag_die_temp_c: Vec<i8>,
     pub pres_die_temp_c: Vec<i8>,
 
-    // IMU (raw, body frame)
-    pub imu_accel_x: Vec<i16>,       // /1000 → G
+    // IMU
+    pub imu_accel_x: Vec<i16>,
     pub imu_accel_y: Vec<i16>,
     pub imu_accel_z: Vec<i16>,
-    pub imu_gyro_x: Vec<i16>,        // /10 → deg/s
+    pub imu_gyro_x: Vec<i16>,
     pub imu_gyro_y: Vec<i16>,
     pub imu_gyro_z: Vec<i16>,
 
     // Magnetometer
-    pub mag_x: Vec<i16>,             // /80 → µT
+    pub mag_x: Vec<i16>,
     pub mag_y: Vec<i16>,
     pub mag_z: Vec<i16>,
 
     // Static pressure
-    pub pres: Vec<u16>,              // *2 → Pa
+    pub pres: Vec<u16>,
 
     // GNSS
     pub gnss_fix: Vec<u8>,
@@ -59,69 +59,69 @@ pub struct Columns {
     pub gnss_utc_hour: Vec<u8>,
     pub gnss_utc_min: Vec<u8>,
     pub gnss_utc_sec: Vec<u8>,
-    pub gnss_horz_pos_acc: Vec<u8>,   // /10 → ft
-    pub gnss_vert_pos_acc: Vec<u8>,   // /10 → ft
-    pub gnss_vel_acc: Vec<u8>,        // /10 → kts
-    pub gnss_ned_vel_x: Vec<i16>,     // /10 → kts
+    pub gnss_horz_pos_acc: Vec<u8>,
+    pub gnss_vert_pos_acc: Vec<u8>,
+    pub gnss_vel_acc: Vec<u8>,
+    pub gnss_ned_vel_x: Vec<i16>,
     pub gnss_ned_vel_y: Vec<i16>,
-    pub gnss_ned_vel_z: Vec<i16>,     // /100 → kts
-    pub gnss_alt_wgs84: Vec<u16>,     // -10000 → ft
-    pub gnss_geoid_height: Vec<i16>,  // /10 → ft
-    pub gnss_lat: Vec<i32>,           // /1e7 → deg
+    pub gnss_ned_vel_z: Vec<i16>,
+    pub gnss_alt_wgs84: Vec<u16>,
+    pub gnss_geoid_height: Vec<i16>,
+    pub gnss_lat: Vec<i32>,
     pub gnss_lon: Vec<i32>,
 
-    // INS (EKF-fused)
-    pub ins_pitch: Vec<i16>,          // /100 → deg (+up)
-    pub ins_roll: Vec<i16>,           // /100 → deg (+right)
-    pub ins_mag_var: Vec<i16>,        // /100 → deg (+east)
-    pub ins_heading_true: Vec<u16>,   // /100 → deg (0-360)
-    pub ins_heading_mag: Vec<u16>,    // /100 → deg (0-360)
-    pub ins_climb_rate: Vec<i16>,     // 1:1 → ft/min
-    pub ins_load_factor: Vec<i16>,    // /1000 → G
-    pub ins_accel_x: Vec<i16>,        // /1000 → G
+    // INS
+    pub ins_pitch: Vec<i16>,
+    pub ins_roll: Vec<i16>,
+    pub ins_mag_var: Vec<i16>,
+    pub ins_heading_true: Vec<u16>,
+    pub ins_heading_mag: Vec<u16>,
+    pub ins_climb_rate: Vec<i16>,
+    pub ins_load_factor: Vec<i16>,
+    pub ins_accel_x: Vec<i16>,
     pub ins_accel_y: Vec<i16>,
     pub ins_accel_z: Vec<i16>,
-    pub ins_gyro_x: Vec<i16>,         // /10 → deg/s
+    pub ins_gyro_x: Vec<i16>,
     pub ins_gyro_y: Vec<i16>,
     pub ins_gyro_z: Vec<i16>,
-    pub ins_mag_x: Vec<i16>,          // /80 → µT
+    pub ins_mag_x: Vec<i16>,
     pub ins_mag_y: Vec<i16>,
     pub ins_mag_z: Vec<i16>,
-    pub ins_ned_vel_x: Vec<i16>,      // /10 → kts
+    pub ins_ned_vel_x: Vec<i16>,
     pub ins_ned_vel_y: Vec<i16>,
-    pub ins_ned_vel_z: Vec<i16>,      // /100 → kts
-    pub ins_gnd_spd: Vec<u16>,        // /100 → kts
-    pub ins_gnd_track_true: Vec<u16>, // /100 → deg (0-360)
-    pub ins_gnd_track_mag: Vec<u16>,  // /100 → deg (0-360)
-    pub ins_flt_path: Vec<i16>,       // /100 → deg
-    pub ins_alt_wgs84: Vec<u16>,      // -10000 → ft
-    pub ins_lat: Vec<i32>,            // /1e7 → deg
+    pub ins_ned_vel_z: Vec<i16>,
+    pub ins_gnd_spd: Vec<u16>,
+    pub ins_gnd_track_true: Vec<u16>,
+    pub ins_gnd_track_mag: Vec<u16>,
+    pub ins_flt_path: Vec<i16>,
+    pub ins_alt_wgs84: Vec<u16>,
+    pub ins_lat: Vec<i32>,
     pub ins_lon: Vec<i32>,
 
     // ADC
-    pub adc_pres: Vec<u16>,           // *2 → Pa
-    pub adc_pres_alt: Vec<u16>,       // -10000 → ft
+    pub adc_pres: Vec<u16>,
+    pub adc_pres_alt: Vec<u16>,
 
-    // External airdata (v1+)
+    // External airdata
     pub airdata_die_temp_c: Vec<i8>,
     pub airdata_static_pres: Vec<u16>,
     pub airdata_diff_pres: Vec<u16>,
-    pub airdata_oat: Vec<i16>,         // /100 → °C
-    pub airdata_ias: Vec<u16>,         // /100 → kts
-    pub airdata_cas: Vec<u16>,         // /100 → kts
-    pub airdata_tas: Vec<u16>,         // /100 → kts
-    pub airdata_pres_alt: Vec<u16>,    // -10000 → ft
-    pub airdata_density_alt: Vec<u16>, // -10000 → ft
-    pub airdata_aoa: Vec<i16>,         // /100
-    pub airdata_wind_spd: Vec<u16>,    // /100 → kts
-    pub airdata_wind_dir_true: Vec<u16>, // /100 → deg
-    pub airdata_wind_dir_mag: Vec<u16>,  // /100 → deg
+    pub airdata_oat: Vec<i16>,
+    pub airdata_ias: Vec<u16>,
+    pub airdata_cas: Vec<u16>,
+    pub airdata_tas: Vec<u16>,
+    pub airdata_pres_alt: Vec<u16>,
+    pub airdata_density_alt: Vec<u16>,
+    pub airdata_aoa: Vec<i16>,
+    pub airdata_wind_spd: Vec<u16>,
+    pub airdata_wind_dir_true: Vec<u16>,
+    pub airdata_wind_dir_mag: Vec<u16>,
 
-    // External AGL altimeter (v2)
+    // AGL
     pub agl_die_temp_c: Vec<i8>,
-    pub agl_alt_in: Vec<i16>,         // 1:1 → inches
+    pub agl_alt_in: Vec<i16>,
 
-    // Heart rate (v2)
+    // Heart rate
     pub heart_rate_bpm: Vec<u8>,
 }
 
@@ -137,9 +137,7 @@ impl Columns {
     }
 
     fn with_capacity(header: FileHeader, n: usize) -> Self {
-        macro_rules! v {
-            () => { Vec::with_capacity(n) };
-        }
+        macro_rules! v { () => { Vec::with_capacity(n) }; }
         Self {
             header, len: 0,
             status: v!(),
@@ -256,112 +254,5 @@ impl Columns {
         self.agl_die_temp_c.push(f.agl_die_temp_c);
         self.agl_alt_in.push(f.agl_alt_in);
         self.heart_rate_bpm.push(f.heart_rate_bpm);
-    }
-
-    // -- Accessors: engineering units --
-
-    pub fn sys_time_s(&self, i: usize) -> f64 { self.sys_time_ms[i] as f64 / 1000.0 }
-    pub fn input_volt_v(&self, i: usize) -> f32 { self.input_volt[i] as f32 / 25.0 }
-    pub fn filt_input_volt_v(&self, i: usize) -> f32 { self.filt_input_volt[i] as f32 / 25.0 }
-
-    // Status
-    pub fn ins_initialized(&self, i: usize) -> bool { self.status[i][1] & 0x40 != 0 }
-    pub fn ins_healthy(&self, i: usize) -> bool { self.status[i][1] & 0x80 != 0 }
-    pub fn gnss_new_data(&self, i: usize) -> bool { self.status[i][1] & 0x10 != 0 }
-    pub fn gnss_healthy(&self, i: usize) -> bool { self.status[i][1] & 0x20 != 0 }
-    pub fn imu_healthy(&self, i: usize) -> bool { self.status[i][0] & 0x10 != 0 }
-    pub fn airdata_connected(&self, i: usize) -> bool { self.status[i][2] & 0x02 != 0 }
-    pub fn agl_connected(&self, i: usize) -> bool { self.status[i][4] & 0x02 != 0 }
-
-    // IMU
-    pub fn imu_accel_x_g(&self, i: usize) -> f32 { self.imu_accel_x[i] as f32 / 1000.0 }
-    pub fn imu_accel_y_g(&self, i: usize) -> f32 { self.imu_accel_y[i] as f32 / 1000.0 }
-    pub fn imu_accel_z_g(&self, i: usize) -> f32 { self.imu_accel_z[i] as f32 / 1000.0 }
-    pub fn imu_gyro_x_dps(&self, i: usize) -> f32 { self.imu_gyro_x[i] as f32 / 10.0 }
-    pub fn imu_gyro_y_dps(&self, i: usize) -> f32 { self.imu_gyro_y[i] as f32 / 10.0 }
-    pub fn imu_gyro_z_dps(&self, i: usize) -> f32 { self.imu_gyro_z[i] as f32 / 10.0 }
-
-    // Magnetometer
-    pub fn mag_x_ut(&self, i: usize) -> f32 { self.mag_x[i] as f32 / 80.0 }
-    pub fn mag_y_ut(&self, i: usize) -> f32 { self.mag_y[i] as f32 / 80.0 }
-    pub fn mag_z_ut(&self, i: usize) -> f32 { self.mag_z[i] as f32 / 80.0 }
-
-    // Pressure
-    pub fn pres_pa(&self, i: usize) -> u32 { self.pres[i] as u32 * 2 }
-
-    // GNSS
-    pub fn gnss_horz_acc_ft(&self, i: usize) -> f32 { self.gnss_horz_pos_acc[i] as f32 / 10.0 }
-    pub fn gnss_vert_acc_ft(&self, i: usize) -> f32 { self.gnss_vert_pos_acc[i] as f32 / 10.0 }
-    pub fn gnss_vel_acc_kts(&self, i: usize) -> f32 { self.gnss_vel_acc[i] as f32 / 10.0 }
-    pub fn gnss_north_vel_kts(&self, i: usize) -> f32 { self.gnss_ned_vel_x[i] as f32 / 10.0 }
-    pub fn gnss_east_vel_kts(&self, i: usize) -> f32 { self.gnss_ned_vel_y[i] as f32 / 10.0 }
-    pub fn gnss_down_vel_kts(&self, i: usize) -> f32 { self.gnss_ned_vel_z[i] as f32 / 100.0 }
-    pub fn gnss_alt_wgs84_ft(&self, i: usize) -> i32 { self.gnss_alt_wgs84[i] as i32 - 10000 }
-    pub fn gnss_geoid_height_ft(&self, i: usize) -> f32 { self.gnss_geoid_height[i] as f32 / 10.0 }
-    pub fn gnss_alt_msl_ft(&self, i: usize) -> f32 { self.gnss_alt_wgs84_ft(i) as f32 - self.gnss_geoid_height_ft(i) }
-    pub fn gnss_lat_deg(&self, i: usize) -> f64 { self.gnss_lat[i] as f64 / 1e7 }
-    pub fn gnss_lon_deg(&self, i: usize) -> f64 { self.gnss_lon[i] as f64 / 1e7 }
-
-    // INS
-    pub fn ins_pitch_deg(&self, i: usize) -> f32 { self.ins_pitch[i] as f32 / 100.0 }
-    pub fn ins_roll_deg(&self, i: usize) -> f32 { self.ins_roll[i] as f32 / 100.0 }
-    pub fn ins_mag_var_deg(&self, i: usize) -> f32 { self.ins_mag_var[i] as f32 / 100.0 }
-    pub fn ins_heading_true_deg(&self, i: usize) -> f32 { self.ins_heading_true[i] as f32 / 100.0 }
-    pub fn ins_heading_mag_deg(&self, i: usize) -> f32 { self.ins_heading_mag[i] as f32 / 100.0 }
-    pub fn ins_climb_rate_fpm(&self, i: usize) -> i16 { self.ins_climb_rate[i] }
-    pub fn ins_load_factor_g(&self, i: usize) -> f32 { self.ins_load_factor[i] as f32 / 1000.0 }
-    pub fn ins_accel_x_g(&self, i: usize) -> f32 { self.ins_accel_x[i] as f32 / 1000.0 }
-    pub fn ins_accel_y_g(&self, i: usize) -> f32 { self.ins_accel_y[i] as f32 / 1000.0 }
-    pub fn ins_accel_z_g(&self, i: usize) -> f32 { self.ins_accel_z[i] as f32 / 1000.0 }
-    pub fn ins_gyro_x_dps(&self, i: usize) -> f32 { self.ins_gyro_x[i] as f32 / 10.0 }
-    pub fn ins_gyro_y_dps(&self, i: usize) -> f32 { self.ins_gyro_y[i] as f32 / 10.0 }
-    pub fn ins_gyro_z_dps(&self, i: usize) -> f32 { self.ins_gyro_z[i] as f32 / 10.0 }
-    pub fn ins_mag_x_ut(&self, i: usize) -> f32 { self.ins_mag_x[i] as f32 / 80.0 }
-    pub fn ins_mag_y_ut(&self, i: usize) -> f32 { self.ins_mag_y[i] as f32 / 80.0 }
-    pub fn ins_mag_z_ut(&self, i: usize) -> f32 { self.ins_mag_z[i] as f32 / 80.0 }
-    pub fn ins_north_vel_kts(&self, i: usize) -> f32 { self.ins_ned_vel_x[i] as f32 / 10.0 }
-    pub fn ins_east_vel_kts(&self, i: usize) -> f32 { self.ins_ned_vel_y[i] as f32 / 10.0 }
-    pub fn ins_down_vel_kts(&self, i: usize) -> f32 { self.ins_ned_vel_z[i] as f32 / 100.0 }
-    pub fn ins_gnd_spd_kts(&self, i: usize) -> f32 { self.ins_gnd_spd[i] as f32 / 100.0 }
-    pub fn ins_gnd_track_true_deg(&self, i: usize) -> f32 { self.ins_gnd_track_true[i] as f32 / 100.0 }
-    pub fn ins_gnd_track_mag_deg(&self, i: usize) -> f32 { self.ins_gnd_track_mag[i] as f32 / 100.0 }
-    pub fn ins_flt_path_deg(&self, i: usize) -> f32 { self.ins_flt_path[i] as f32 / 100.0 }
-    pub fn ins_alt_wgs84_ft(&self, i: usize) -> i32 { self.ins_alt_wgs84[i] as i32 - 10000 }
-    pub fn ins_alt_msl_ft(&self, i: usize) -> f32 { self.ins_alt_wgs84_ft(i) as f32 - self.gnss_geoid_height_ft(i) }
-    pub fn ins_lat_deg(&self, i: usize) -> f64 { self.ins_lat[i] as f64 / 1e7 }
-    pub fn ins_lon_deg(&self, i: usize) -> f64 { self.ins_lon[i] as f64 / 1e7 }
-
-    // ADC
-    pub fn adc_pres_pa(&self, i: usize) -> u32 { self.adc_pres[i] as u32 * 2 }
-    pub fn adc_pres_alt_ft(&self, i: usize) -> i32 { self.adc_pres_alt[i] as i32 - 10000 }
-
-    // External airdata
-    pub fn airdata_ias_kts(&self, i: usize) -> f32 { self.airdata_ias[i] as f32 / 100.0 }
-    pub fn airdata_cas_kts(&self, i: usize) -> f32 { self.airdata_cas[i] as f32 / 100.0 }
-    pub fn airdata_tas_kts(&self, i: usize) -> f32 { self.airdata_tas[i] as f32 / 100.0 }
-    pub fn airdata_oat_c(&self, i: usize) -> f32 { self.airdata_oat[i] as f32 / 100.0 }
-    pub fn airdata_wind_spd_kts(&self, i: usize) -> f32 { self.airdata_wind_spd[i] as f32 / 100.0 }
-    pub fn airdata_wind_dir_true_deg(&self, i: usize) -> f32 { self.airdata_wind_dir_true[i] as f32 / 100.0 }
-    pub fn airdata_pres_alt_ft(&self, i: usize) -> i32 { self.airdata_pres_alt[i] as i32 - 10000 }
-    pub fn airdata_density_alt_ft(&self, i: usize) -> i32 { self.airdata_density_alt[i] as i32 - 10000 }
-
-    // AGL
-    pub fn agl_alt_ft(&self, i: usize) -> f32 { self.agl_alt_in[i] as f32 / 12.0 }
-
-    // -- Convenience --
-
-    /// Duration in seconds.
-    pub fn duration_s(&self) -> f64 {
-        if self.len > 0 { self.sys_time_s(self.len - 1) - self.sys_time_s(0) } else { 0.0 }
-    }
-
-    /// Time offset from start of recording for sample i.
-    pub fn t(&self, i: usize) -> f64 {
-        self.sys_time_s(i) - self.sys_time_s(0)
-    }
-
-    /// Index of first sample with valid GNSS fix (>= 3D).
-    pub fn first_fix_index(&self) -> Option<usize> {
-        (0..self.len).find(|&i| self.gnss_fix[i] >= 3)
     }
 }
