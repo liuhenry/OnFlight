@@ -15,9 +15,11 @@
 
 mod frame;
 mod checksum;
+pub mod columnar;
 
 pub use frame::Frame;
 pub use checksum::fletcher16;
+pub use columnar::Columns;
 
 use core::fmt;
 
